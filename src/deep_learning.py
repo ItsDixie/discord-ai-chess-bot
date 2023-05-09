@@ -55,20 +55,30 @@ class chessAI:
         print('---TRAINING...---')
         for i in range(num_games):
             while not board.is_game_over():
-                next_state = self.get_board_state(board)
-                state = next_state
-                move = self.get_move(board)
-                board.push(move)
-                score = self.engine.analyse(board, chess.engine.Limit(time=3.0))["score"].relative.score()
-                reward = score / 100.0
-                action = list(board.move_stack)[-1].uci()
-                self.update_q_table(state, action, reward, next_state)
-                print(board)
-                print(f'score {reward} of this move')
+                try:
+                    if(board.turn == chess.BLACK): # training AI to be the BEST BLACK AHAH
+                        next_state = self.get_board_state(board)
+                        state = next_state
+                        move = self.get_move(board)
+                        board.push(move)
+                        score = self.engine.analyse(board, chess.engine.Limit(time=6.0))["score"].relative.score()
+                        reward = score / 100.0
+                        action = list(board.move_stack)[-1].uci()
+                        self.update_q_table(state, action, reward, next_state)
+                        print(board)
+                        print(f'score {reward} of this move')
+                    else:
+                        board.push(self.engine.play(board, chess.engine.Limit(time=4.0)).move ) # Rybka engine moving WHITE figures and training mine AI
+                except Exception as e:
+                    self.export_table()
+                    print('---TRAINING FAIL RESTART---')
+                    print(e)
+                    self.train(num_games)
             print(f'Game over {board.result()}')
             board.reset()
         self.export_table()
         print('---TRAINING COMPLEATED---')
+        self.close()
 
     
     def play_game(self):
@@ -100,6 +110,7 @@ class chessAI:
             print(board)
         print("Game over!")
         self.export_table()
+        self.close()
     
     def export_table(self):
         with open('table.json', 'w') as file:
@@ -108,6 +119,9 @@ class chessAI:
     def insert_table(self):
         with open('table.json', 'r') as file:
             self.q_table = json.load(file)
+
+    def close(self):
+        self.engine.quit()
 
 
 
