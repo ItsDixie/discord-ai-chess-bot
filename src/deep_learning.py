@@ -1,6 +1,7 @@
 import chess
 import chess.engine
 import random
+import json
 
 class chessAI:
 
@@ -42,7 +43,42 @@ class chessAI:
     def get_board_state(self, board):
         return board.fen()
     
+    def train(self, num_games):
+
+        try:
+            self.insert_table()
+            print('Table for train loaded')
+        except Exception:
+            pass
+
+        board = chess.Board()
+        print('---TRAINING...---')
+        for i in range(num_games):
+            while not board.is_game_over():
+                next_state = self.get_board_state(board)
+                state = next_state
+                move = self.get_move(board)
+                board.push(move)
+                score = self.engine.analyse(board, chess.engine.Limit(time=3.0))["score"].relative.score()
+                reward = score / 100.0
+                action = list(board.move_stack)[-1].uci()
+                self.update_q_table(state, action, reward, next_state)
+                print(board)
+                print(f'score {reward} of this move')
+            print(f'Game over {board.result()}')
+            board.reset()
+        self.export_table()
+        print('---TRAINING COMPLEATED---')
+
+    
     def play_game(self):
+
+        try:
+            self.insert_table()
+            print('Table loaded')
+        except Exception:
+            pass
+
         board = chess.Board()
 
         while not board.is_game_over():
@@ -62,9 +98,20 @@ class chessAI:
                 except Exception:
                     print("Wrong input (use coordinate table)")
             print(board)
+        print("Game over!")
+        self.export_table()
+    
+    def export_table(self):
+        with open('table.json', 'w') as file:
+            json.dump(self.q_table, file)
+
+    def insert_table(self):
+        with open('table.json', 'r') as file:
+            self.q_table = json.load(file)
 
 
 
 
 bot = chessAI()
-bot.play_game()
+bot.train(10)
+
