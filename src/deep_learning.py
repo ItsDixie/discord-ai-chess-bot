@@ -2,6 +2,7 @@ import chess
 import chess.engine
 import random
 import json
+import math
 
 class chessAI:
 
@@ -10,24 +11,35 @@ class chessAI:
         self.q_table = {}
         self.alpha = 0.1
         self.gamma = 0.6
-        self.epsilon = 0.1
+        self.epsilon = 0.2
 
-    def get_move(self, board):
-    
+    def get_move(self, board, depth):
         state = self.get_board_state(board)
-        
         legal_moves = list(board.legal_moves)
         
-        if (state not in self.q_table):
+        if state not in self.q_table:
             self.q_table[state] = [0] * len(legal_moves)
         
-        if (random.random() < self.epsilon):
-        
+        if random.random() < self.epsilon:
             return random.choice(legal_moves)
         
         else:
-            best_move_index = self.q_table[state].index(max(self.q_table[state]))
+            best_move = self.find_best_move(board, depth)
+            best_move_index = legal_moves.index(best_move)
             return legal_moves[best_move_index]
+    
+    def find_best_move(self, board, depth):
+        best_move = None
+        max_eval = -math.inf
+        for move in board.legal_moves:
+            board.push(move)
+            eval = self.minimax(board, depth, False)
+            board.pop()
+            if eval > max_eval:
+                max_eval = eval
+                best_move = move
+        return best_move
+
         
     def update_q_table(self, state, action, reward, next_state):
         legal_moves = list(chess.Board(next_state).legal_moves)
@@ -58,12 +70,12 @@ class chessAI:
                 try: 
                     next_state = self.get_board_state(board)
                     state = next_state
-                    move = self.get_move(board)
+                    move = self.get_move(board, 2)
                     board.push(move)
                     try:
                         score = self.engine.analyse(board, chess.engine.Limit(time=3.0))["score"].relative.score()
                     except Exception:
-                        score = self.engine.analyse(board, chess.engine.Limit(time=10.0))["score"].relative.score()
+                        score = self.engine.analyse(board, chess.engine.Limit(time=20.0))["score"].relative.score()
                     reward = score / 100.0
                     action = list(board.move_stack)[-1].uci()
                     self.update_q_table(state, action, reward, next_state)
@@ -75,11 +87,34 @@ class chessAI:
                     print('---TRAINING FAIL RESTART---')
                     print(e)
                     self.train(num_games)
+            self.export_table()
             print(f'Game over {board.result()}')
             board.reset()
         self.export_table()
         print('---TRAINING COMPLEATED---')
         self.close()
+
+    def minimax(self, board, depth, maximizing_player):
+        if depth == 0 or not board.is_game_over():
+            score = self.engine.analyse(board, chess.engine.Limit(time=0.1))["score"].relative.score()
+            return score
+        else:
+            if maximizing_player:
+                max_eval = -math.inf
+                for move in board.legal_moves:
+                    board.push(move)
+                    eval = self.minimax(board, depth-1, False)
+                    board.pop()
+                    max_eval = max(max_eval, eval)
+                return max_eval
+            else:
+                min_eval = math.inf
+                for move in board.legal_moves:
+                    board.push(move)
+                    eval = self.minimax(board, depth-1, True)
+                    board.pop()
+                    min_eval = min(min_eval, eval)
+                return min_eval
 
     
     def play_game(self):
@@ -128,5 +163,5 @@ class chessAI:
 
 
 bot = chessAI()
-bot.train(10)
+bot.train(100)
 
