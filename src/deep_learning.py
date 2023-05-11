@@ -68,19 +68,23 @@ class chessAI:
         for i in range(num_games):
             while not board.is_game_over():
                 try: 
-                    next_state = self.get_board_state(board)
-                    state = next_state
-                    move = self.get_move(board, 2)
-                    board.push(move)
-                    try:
-                        score = self.engine.analyse(board, chess.engine.Limit(time=3.0))["score"].relative.score()
-                    except Exception:
-                        score = self.engine.analyse(board, chess.engine.Limit(time=20.0))["score"].relative.score()
-                    reward = score / 100.0
-                    action = list(board.move_stack)[-1].uci()
-                    self.update_q_table(state, action, reward, next_state)
-                    print(board)
-                    print(f'score {reward} of this move')
+                    if(board.turn == chess.WHITE):
+                        next_state = self.get_board_state(board)
+                        state = next_state
+                        move = self.get_move(board, 2)
+                        board.push(move)
+                        try:
+                            score = self.engine.analyse(board, chess.engine.Limit(time=3.0))["score"].relative.score()
+                        except Exception:
+                            score = self.engine.analyse(board, chess.engine.Limit(time=20.0))["score"].relative.score()
+                        reward = score / 100.0
+                        action = list(board.move_stack)[-1].uci()
+                        self.update_q_table(state, action, reward, next_state)
+                        print(board)
+                        print(f'score {reward} of this move')
+                    else:
+                        board.push(self.engine.play(board, chess.engine.Limit(time=2.0)).move)
+                        print(board)
 
                 except Exception as e:
                     self.export_table()
@@ -131,7 +135,7 @@ class chessAI:
             next_state = self.get_board_state(board)
             state = next_state
             if(board.turn == chess.BLACK):
-                move = self.get_move(board)
+                move = self.get_move(board, 2)
                 board.push(move)
                 score = self.engine.analyse(board, chess.engine.Limit(time=1.0))["score"].relative.score()
                 reward = score / 100.0
